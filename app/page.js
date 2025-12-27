@@ -490,13 +490,7 @@ export default function Home() {
               <h2 className="text-2xl font-bold text-gray-800 mb-4">📦 郵寄資料</h2>
               <div className="bg-white rounded-2xl shadow-lg p-6 max-w-lg mx-auto">
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                  <p className="text-yellow-800 text-sm">
-                    💡 如果您選擇使用<strong>賣貨便</strong>，請直接到
-                    <a href={CONVENIENCE_STORE_LINK} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline ml-1">
-                      此連結
-                    </a>
-                    下單付運費即可，不需填寫此表單。
-                  </p>
+              
                   <p className="text-yellow-800 text-sm mt-2">
                     📮 此表單僅供選擇<strong>郵寄</strong>方式的用戶填寫。
                   </p>
