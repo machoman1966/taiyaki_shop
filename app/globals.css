@@ -4,11 +4,31 @@
 
 :root {
   --foreground-rgb: 0, 0, 0;
-  --background-rgb: 255, 245, 235;
+  --background-start: #fff5eb;
+  --background-end: #ffe4d4;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(135deg, #fff5eb 0%, #ffe4d4 100%);
+  background: linear-gradient(135deg, var(--background-start) 0%, var(--background-end) 100%);
   min-height: 100vh;
+}
+
+/* 自定義滾動條 */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #f97316;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #ea580c;
 }
