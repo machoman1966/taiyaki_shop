@@ -26,6 +26,8 @@ export default function Home() {
   const [shippingForm, setShippingForm] = useState({
     recipientName: '', phone: '', address: '', itemName: '', notes: ''
   })
+  const [redeemCode, setRedeemCode] = useState('')
+  const [isRedeeming, setIsRedeeming] = useState(false)
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -233,6 +235,78 @@ export default function Home() {
     } catch (err) { setMessage({ text: '送出失敗，請稍後再試', type: 'error' }) }
   }
 
+  const handleRedeemCode = async () => {
+    if (!user || !redeemCode.trim()) {
+      setMessage({ text: '請輸入兌換碼', type: 'error' })
+      return
+    }
+    setIsRedeeming(true)
+    try {
+      // 查詢兌換碼
+      const { data: codeData, error: codeError } = await supabase
+        .from('exchange_codes')
+        .select('*')
+        .eq('code', redeemCode.trim().toUpperCase())
+        .eq('is_active', true)
+        .single()
+
+      if (codeError || !codeData) {
+        setMessage({ text: '❌ 無效的兌換碼', type: 'error' })
+        setIsRedeeming(false)
+        return
+      }
+
+      // 檢查時間限制
+      const now = new Date()
+      if (codeData.start_time && new Date(codeData.start_time) > now) {
+        setMessage({ text: '⏰ 此兌換碼尚未開放', type: 'error' })
+        setIsRedeeming(false)
+        return
+      }
+      if (codeData.end_time && new Date(codeData.end_time) < now) {
+        setMessage({ text: '⏰ 此兌換碼已過期', type: 'error' })
+        setIsRedeeming(false)
+        return
+      }
+
+      // 檢查使用次數
+      if (codeData.used_count >= codeData.max_uses) {
+        setMessage({ text: '❌ 此兌換碼已達使用上限', type: 'error' })
+        setIsRedeeming(false)
+        return
+      }
+
+      // 檢查是否已兌換過
+      const { data: existingRedemption } = await supabase
+        .from('code_redemptions')
+        .select('id')
+        .eq('code_id', codeData.id)
+        .eq('discord_id', user.id)
+        .single()
+
+      if (existingRedemption) {
+        setMessage({ text: '❌ 你已經兌換過此代碼了', type: 'error' })
+        setIsRedeeming(false)
+        return
+      }
+
+      // 執行兌換
+      const newPoints = (dbUser?.points || 0) + codeData.points
+      await supabase.from('users').upsert({ discord_id: user.id, points: newPoints }, { onConflict: 'discord_id' })
+      await supabase.from('exchange_codes').update({ used_count: codeData.used_count + 1 }).eq('id', codeData.id)
+      await supabase.from('code_redemptions').insert({ code_id: codeData.id, discord_id: user.id })
+
+      setDbUser({ ...dbUser, points: newPoints, notFound: false })
+      setMessage({ text: `🎉 兌換成功！獲得 ${codeData.points} 個鯛魚燒！`, type: 'success' })
+      setRedeemCode('')
+      sendWebhookNotification('兌換碼', `${codeData.code} (+${codeData.points}點)`, user.displayName, user.id)
+    } catch (err) {
+      console.error('Redeem error:', err)
+      setMessage({ text: '兌換失敗，請稍後再試', type: 'error' })
+    }
+    setIsRedeeming(false)
+  }
+
   if (loading) return <main className="min-h-screen flex items-center justify-center"><div className="text-2xl text-orange-600">載入中...</div></main>
 
   return (
@@ -291,9 +365,10 @@ export default function Home() {
 
           <div className="mb-6">
             <div className="flex bg-white rounded-xl shadow p-1 flex-wrap">
-              <button onClick={() => setActiveTab('rewards')} className={`flex-1 py-3 px-4 rounded-lg font-medium transition min-w-[100px] ${activeTab === 'rewards' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-100'}`}>🎁 兌換獎品</button>
-              <button onClick={() => setActiveTab('gacha')} className={`flex-1 py-3 px-4 rounded-lg font-medium transition min-w-[100px] ${activeTab === 'gacha' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-100'}`}>🎰 福引抽獎</button>
-              {hasWonPrize && <button onClick={() => setActiveTab('shipping')} className={`flex-1 py-3 px-4 rounded-lg font-medium transition min-w-[100px] ${activeTab === 'shipping' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-100'}`}>📦 郵寄資料</button>}
+              <button onClick={() => setActiveTab('rewards')} className={`flex-1 py-3 px-4 rounded-lg font-medium transition min-w-[80px] ${activeTab === 'rewards' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-100'}`}>🎁 兌換獎品</button>
+              <button onClick={() => setActiveTab('gacha')} className={`flex-1 py-3 px-4 rounded-lg font-medium transition min-w-[80px] ${activeTab === 'gacha' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-100'}`}>🎰 福引抽獎</button>
+              <button onClick={() => setActiveTab('code')} className={`flex-1 py-3 px-4 rounded-lg font-medium transition min-w-[80px] ${activeTab === 'code' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-100'}`}>🎫 兌換碼</button>
+              {hasWonPrize && <button onClick={() => setActiveTab('shipping')} className={`flex-1 py-3 px-4 rounded-lg font-medium transition min-w-[80px] ${activeTab === 'shipping' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-100'}`}>📦 郵寄資料</button>}
             </div>
           </div>
 
@@ -340,11 +415,53 @@ export default function Home() {
             </div>
           )}
 
+          {activeTab === 'code' && (
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">🎫 兌換碼</h2>
+              <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md mx-auto">
+                <div className="text-center mb-6">
+                  <div className="text-6xl mb-4">🎁</div>
+                  <p className="text-gray-600">輸入兌換碼獲得鯛魚燒！</p>
+                  <p className="text-sm text-gray-500 mt-2">兌換碼可從 Discord 活動中獲得</p>
+                </div>
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    value={redeemCode}
+                    onChange={(e) => setRedeemCode(e.target.value.toUpperCase())}
+                    placeholder="請輸入兌換碼"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-center text-xl font-mono uppercase focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition"
+                    maxLength={20}
+                  />
+                  <button
+                    onClick={handleRedeemCode}
+                    disabled={isRedeeming || !redeemCode.trim()}
+                    className={`w-full py-3 rounded-xl font-bold text-lg transition ${
+                      !isRedeeming && redeemCode.trim()
+                        ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    {isRedeeming ? '兌換中...' : '🎉 兌換'}
+                  </button>
+                </div>
+                <div className="mt-6 pt-6 border-t">
+                  <h3 className="font-bold text-gray-700 mb-3">💡 如何獲得兌換碼？</h3>
+                  <ul className="text-sm text-gray-600 space-y-2">
+                    <li>• 參加 Discord 伺服器活動</li>
+                    <li>• 特殊節日限定發放</li>
+                    <li>• 管理員不定期放送</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'shipping' && hasWonPrize && (
             <div>
               <h2 className="text-2xl font-bold text-gray-800 mb-4">📦 郵寄資料</h2>
               <div className="bg-white rounded-2xl shadow-lg p-6 max-w-lg mx-auto">
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6"><p className="text-yellow-800 text-sm mt-2">📮 此表單僅供選擇<strong>郵寄</strong>方式的用戶填寫。</p></div>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6"><p className="text-yellow-800 text-sm">💡 如果您選擇使用<strong>賣貨便</strong>，請直接到<a href={CONVENIENCE_STORE_LINK} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline ml-1">此連結</a>下單付運費即可，不需填寫此表單。</p><p className="text-yellow-800 text-sm mt-2">📮 此表單僅供選擇<strong>郵寄</strong>方式的用戶填寫。</p></div>
                 <form onSubmit={handleShippingSubmit} className="space-y-4">
                   <div><label className="block text-sm font-medium text-gray-700 mb-1">獎品名稱 <span className="text-red-500">*</span></label><input type="text" value={shippingForm.itemName} onChange={(e) => setShippingForm({...shippingForm, itemName: e.target.value})} placeholder="請輸入您要領取的獎品名稱" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" required/></div>
                   <div><label className="block text-sm font-medium text-gray-700 mb-1">收件人姓名 <span className="text-red-500">*</span></label><input type="text" value={shippingForm.recipientName} onChange={(e) => setShippingForm({...shippingForm, recipientName: e.target.value})} placeholder="真實姓名" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" required/></div>
