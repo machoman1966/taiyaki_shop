@@ -14,7 +14,6 @@ body {
   min-height: 100vh;
 }
 
-/* 自定義滾動條 */
 ::-webkit-scrollbar {
   width: 8px;
 }
