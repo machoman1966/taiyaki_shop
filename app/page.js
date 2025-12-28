@@ -31,15 +31,14 @@ export default function Home() {
   const [isRedeeming, setIsRedeeming] = useState(false)
   const [userHistory, setUserHistory] = useState({ draws: [], redemptions: [], codes: [], points: [], wins: [] })
   const [pityProgress, setPityProgress] = useState({ total: 0, current: 0, next: 35, milestone: 0, canClaim: false })
-  const [darkMode, setDarkMode] = useState(true) // 預設暗色模式
+  const [darkMode, setDarkMode] = useState(false) // 預設淺色模式
   const [showRulesPanel, setShowRulesPanel] = useState(false) // 側邊規則面板
   const [pendingShipping, setPendingShipping] = useState(null) // 待處理的郵寄訂單
 
-  // 深色模式初始化 - 預設開啟
+  // 淺色模式初始化 - 預設開啟淺色
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme')
-    // 如果沒有儲存的設定或是 dark，就使用暗色模式
-    if (savedTheme !== 'light') {
+    if (savedTheme === 'dark') {
       setDarkMode(true)
       document.documentElement.setAttribute('data-theme', 'dark')
     } else {
@@ -52,10 +51,10 @@ export default function Home() {
     const newMode = !darkMode
     setDarkMode(newMode)
     if (newMode) {
-      document.documentElement.removeAttribute('data-theme')
+      document.documentElement.setAttribute('data-theme', 'dark')
       localStorage.setItem('theme', 'dark')
     } else {
-      document.documentElement.setAttribute('data-theme', 'light')
+      document.documentElement.removeAttribute('data-theme')
       localStorage.setItem('theme', 'light')
     }
   }
@@ -594,19 +593,19 @@ export default function Home() {
       </div>
 
       <div className="text-center mb-6">
-        <h1 className="text-4xl md:text-5xl font-bold text-orange-500 mb-2">🐟 鯛魚燒商城</h1>
-        <p className="text-gray-400">使用鯛魚燒點數兌換精美獎品</p>
+        <h1 className="text-4xl md:text-5xl font-bold text-orange-600 mb-2">🐟 鯛魚燒商城</h1>
+        <p className="text-gray-600">使用鯛魚燒點數兌換精美獎品</p>
         {user && user.id === ADMIN_ID && <a href="/admin" className="inline-block mt-2 text-sm text-orange-500 hover:text-orange-700 underline">🔧 管理後台</a>}
       </div>
 
-      {error && <div className="max-w-md mx-auto mb-6 p-4 bg-red-900/50 text-red-300 rounded-lg text-center border border-red-700">{error}</div>}
+      {error && <div className="max-w-md mx-auto mb-6 p-4 bg-red-100 text-red-700 rounded-lg text-center border border-red-300">{error}</div>}
 
       {!user ? (
         <div className="max-w-4xl mx-auto">
           {/* 獎品一覽（未登入也能看） */}
-          <div className="bg-gray-800 rounded-2xl shadow-lg p-6 mb-6 border border-gray-700">
-            <h2 className="text-2xl font-bold text-orange-400 mb-4 text-center">🎯 植物園福引抽獎</h2>
-            <p className="text-center text-gray-400 mb-6">登入後使用 3 個鯛魚燒抽一次，試試你的運氣！</p>
+          <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">🎯 植物園福引抽獎</h2>
+            <p className="text-center text-gray-500 mb-6">登入後使用 3 個鯛魚燒抽一次，試試你的運氣！</p>
             
             {/* 獎品列表 */}
             <div className="space-y-3 mb-6">
@@ -970,9 +969,9 @@ export default function Home() {
                   </div>
                 ) : (
                   <>
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                      <p className="text-yellow-800 text-sm">💡 如果您選擇使用<strong>賣貨便</strong>，請直接到<a href={CONVENIENCE_STORE_LINK} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline ml-1">此連結</a>下單付運費即可，不需填寫此表單。</p>
-                      <p className="text-yellow-800 text-sm mt-2">📮 此表單僅供選擇<strong>郵寄</strong>方式的用戶填寫。</p>
+                    <div className="bg-amber-100 border-2 border-amber-400 rounded-lg p-4 mb-6">
+                      <p className="text-amber-900 text-sm font-medium">💡 如果您選擇使用<strong className="text-amber-700">賣貨便</strong>，請直接到<a href={CONVENIENCE_STORE_LINK} target="_blank" rel="noopener noreferrer" className="text-blue-700 font-bold underline ml-1 hover:text-blue-900">此連結</a>下單付運費即可，不需填寫此表單。</p>
+                      <p className="text-amber-900 text-sm font-medium mt-2">📮 此表單僅供選擇<strong className="text-amber-700">郵寄</strong>方式的用戶填寫。</p>
                     </div>
                     <form onSubmit={handleShippingSubmit} className="space-y-4">
                       <div><label className="block text-sm font-medium text-gray-700 mb-1">獎品名稱 <span className="text-red-500">*</span></label><input type="text" value={shippingForm.itemName} onChange={(e) => setShippingForm({...shippingForm, itemName: e.target.value})} placeholder="請輸入您要領取的獎品名稱" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" required/></div>
