@@ -757,32 +757,43 @@ export default function Home() {
           )}
 
           {activeTab === 'code' && (
-                        <div key={prize.id} className="relative group">
-                          <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 border-2" style={{ borderColor: prize.rank_color || '#6B7280' }}>
-                            <img src={prize.image_url} alt={prize.name} className="w-full h-full object-cover group-hover:scale-110 transition duration-300"/>
-                          </div>
-                          <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 text-white p-2 text-center text-sm rounded-b-xl">
-                            <span className="px-2 py-0.5 rounded text-xs font-bold mr-1" style={{ backgroundColor: prize.rank_color || '#6B7280' }}>{prize.rank_name || '五等賞'}</span>
-                            <span className="block truncate mt-1">{prize.name}</span>
-                          </div>
-                          {prize.quantity <= 0 && (
-                            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-xl">
-                              <span className="text-white font-bold text-lg">已抽完</span>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              {/* 快速抽獎按鈕 */}
-              <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl shadow-lg p-6 text-center">
-                <p className="text-white mb-4">心動了嗎？馬上來試試手氣！</p>
-                <button onClick={() => setActiveTab('gacha')} className="bg-white text-orange-600 font-bold py-3 px-8 rounded-xl hover:bg-orange-50 transition">
-                  🎰 前往福引抽獎
-                </button>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">🎫 兌換碼</h2>
+              <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md mx-auto">
+                <div className="text-center mb-6">
+                  <div className="text-6xl mb-4">🎁</div>
+                  <p className="text-gray-600">輸入兌換碼獲得鯛魚燒！</p>
+                  <p className="text-sm text-gray-500 mt-2">兌換碼可從 Discord 活動中獲得</p>
+                </div>
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    value={redeemCode}
+                    onChange={(e) => setRedeemCode(e.target.value.toUpperCase())}
+                    placeholder="請輸入兌換碼"
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-center text-xl font-mono uppercase focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition"
+                    maxLength={20}
+                  />
+                  <button
+                    onClick={handleRedeemCode}
+                    disabled={isRedeeming || !redeemCode.trim()}
+                    className={`w-full py-3 rounded-xl font-bold text-lg transition ${
+                      !isRedeeming && redeemCode.trim()
+                        ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    {isRedeeming ? '兌換中...' : '🎉 兌換'}
+                  </button>
+                </div>
+                <div className="mt-6 pt-6 border-t">
+                  <h3 className="font-bold text-gray-700 mb-3">💡 如何獲得兌換碼？</h3>
+                  <ul className="text-sm text-gray-600 space-y-2">
+                    <li>• 參加 Discord 伺服器活動</li>
+                    <li>• 特殊節日限定發放</li>
+                    <li>• 管理員不定期放送</li>
+                  </ul>
+                </div>
               </div>
             </div>
           )}
