@@ -16,6 +16,7 @@ export default function AdminPage() {
   const [message, setMessage] = useState({ text: '', type: '' })
 
   const [rewards, setRewards] = useState([])
+  const [freeGifts, setFreeGifts] = useState([]) // 免費贈物
   const [prizes, setPrizes] = useState([])
   const [orders, setOrders] = useState([])
   const [codes, setCodes] = useState([])
@@ -28,10 +29,12 @@ export default function AdminPage() {
   const [recordTab, setRecordTab] = useState('notifications') // notifications, draws, redemptions, codes
 
   const [rewardForm, setRewardForm] = useState({ name: '', cost: '', quantity: '', description: '', image_url: '' })
+  const [freeGiftForm, setFreeGiftForm] = useState({ name: '', quantity: '', description: '', image_url: '' }) // 免費贈物表單
   const [prizeForm, setPrizeForm] = useState({ name: '', quantity: '', probability: '0.01', description: '', image_url: '' })
   const [codeForm, setCodeForm] = useState({ code: '', points: '', max_uses: '1', description: '', start_time: '', end_time: '' })
   
   const [editingReward, setEditingReward] = useState(null)
+  const [editingFreeGift, setEditingFreeGift] = useState(null) // 編輯免費贈物
   const [editingPrize, setEditingPrize] = useState(null)
   const [editingCode, setEditingCode] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -90,12 +93,19 @@ export default function AdminPage() {
   }, [isAuthorized])
 
   const loadAllData = async () => {
-    await Promise.all([loadRewards(), loadPrizes(), loadOrders(), loadCodes(), loadNotifications(), loadUsers(), loadDrawRecords(), loadRedemptionRecords(), loadCodeRedemptions()])
+    await Promise.all([loadRewards(), loadFreeGifts(), loadPrizes(), loadOrders(), loadCodes(), loadNotifications(), loadUsers(), loadDrawRecords(), loadRedemptionRecords(), loadCodeRedemptions()])
   }
 
   const loadRewards = async () => {
-    const { data } = await supabase.from('rewards').select('*').order('id', { ascending: true })
+    // 只載入 cost > 0 的付費獎品
+    const { data } = await supabase.from('rewards').select('*').gt('cost', 0).order('id', { ascending: true })
     if (data) setRewards(data)
+  }
+
+  const loadFreeGifts = async () => {
+    // 只載入 cost = 0 的免費贈物
+    const { data } = await supabase.from('rewards').select('*').eq('cost', 0).order('id', { ascending: true })
+    if (data) setFreeGifts(data)
   }
 
   const loadPrizes = async () => {
@@ -261,6 +271,43 @@ export default function AdminPage() {
     loadRewards()
   }
 
+  // 免費贈物管理
+  const handleSaveFreeGift = async () => {
+    if (!freeGiftForm.name || !freeGiftForm.quantity) {
+      setMessage({ text: '請填寫必填欄位', type: 'error' })
+      return
+    }
+    try {
+      const data = { 
+        name: freeGiftForm.name, 
+        cost: 0, // 免費贈物 cost 固定為 0
+        quantity: parseInt(freeGiftForm.quantity), 
+        description: freeGiftForm.description || null, 
+        image_url: freeGiftForm.image_url || null 
+      }
+      if (editingFreeGift) {
+        await supabase.from('rewards').update(data).eq('id', editingFreeGift.id)
+        setMessage({ text: '✅ 免費贈物已更新', type: 'success' })
+      } else {
+        await supabase.from('rewards').insert(data)
+        setMessage({ text: '✅ 免費贈物已新增', type: 'success' })
+      }
+      setFreeGiftForm({ name: '', quantity: '', description: '', image_url: '' })
+      setEditingFreeGift(null)
+      loadFreeGifts()
+    } catch (err) { 
+      console.error('Save free gift error:', err)
+      setMessage({ text: '操作失敗', type: 'error' }) 
+    }
+  }
+
+  const handleDeleteFreeGift = async (id) => {
+    if (!confirm('確定要刪除此免費贈物嗎？')) return
+    await supabase.from('rewards').delete().eq('id', id)
+    setMessage({ text: '✅ 已刪除', type: 'success' })
+    loadFreeGifts()
+  }
+
   // 福引獎品管理
   const handleSavePrize = async () => {
     if (!prizeForm.name || !prizeForm.quantity) {
@@ -397,6 +444,7 @@ export default function AdminPage() {
 
         <div className="flex bg-white rounded-xl shadow p-1 mb-6 flex-wrap">
           <button onClick={() => setActiveTab('rewards')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition min-w-[80px] ${activeTab === 'rewards' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-100'}`}>🎁 獎品</button>
+          <button onClick={() => setActiveTab('freeGifts')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition min-w-[80px] ${activeTab === 'freeGifts' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-100'}`}>🎀 免費</button>
           <button onClick={() => setActiveTab('prizes')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition min-w-[80px] ${activeTab === 'prizes' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-100'}`}>🎰 福引</button>
           <button onClick={() => setActiveTab('codes')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition min-w-[80px] ${activeTab === 'codes' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-100'}`}>🎫 兌換碼</button>
           <button onClick={() => setActiveTab('users')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition min-w-[80px] ${activeTab === 'users' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-100'}`}>👥 用戶</button>
@@ -441,6 +489,57 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* 免費贈物管理 */}
+        {activeTab === 'freeGifts' && (
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-xl font-bold mb-4">{editingFreeGift ? '編輯免費贈物' : '新增免費贈物'}</h2>
+              <div className="bg-pink-50 border border-pink-200 rounded-lg p-3 mb-4">
+                <p className="text-pink-800 text-sm">💝 免費贈物不需要點數，用戶只需支付運費即可領取</p>
+              </div>
+              <div className="space-y-4">
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">名稱 *</label><input type="text" value={freeGiftForm.name} onChange={(e) => setFreeGiftForm({...freeGiftForm, name: e.target.value})} className="w-full px-3 py-2 border rounded-lg"/></div>
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">數量 *</label><input type="number" value={freeGiftForm.quantity} onChange={(e) => setFreeGiftForm({...freeGiftForm, quantity: e.target.value})} className="w-full px-3 py-2 border rounded-lg"/></div>
+                <div><label className="block text-sm font-medium text-gray-700 mb-1">說明</label><textarea value={freeGiftForm.description} onChange={(e) => setFreeGiftForm({...freeGiftForm, description: e.target.value})} className="w-full px-3 py-2 border rounded-lg" rows={2}/></div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">圖片</label>
+                  <input type="file" accept="image/*" onChange={async (e) => { const url = await handleImageUpload(e.target.files[0], 'free_gift'); if (url) setFreeGiftForm({...freeGiftForm, image_url: url}) }} className="w-full px-3 py-2 border rounded-lg mb-2"/>
+                  <input type="text" value={freeGiftForm.image_url || ''} onChange={(e) => setFreeGiftForm({...freeGiftForm, image_url: e.target.value})} placeholder="或直接貼上圖片網址" className="w-full px-3 py-2 border rounded-lg text-sm"/>
+                  {uploading && <p className="text-sm text-blue-500 mt-1">上傳中...</p>}
+                  {freeGiftForm.image_url && <img src={freeGiftForm.image_url} alt="preview" className="mt-2 h-20 object-cover rounded"/>}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={handleSaveFreeGift} className="flex-1 bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 rounded-lg">{editingFreeGift ? '更新' : '新增'}</button>
+                  {editingFreeGift && <button onClick={() => { setEditingFreeGift(null); setFreeGiftForm({ name: '', quantity: '', description: '', image_url: '' }) }} className="px-4 bg-gray-300 hover:bg-gray-400 text-gray-700 font-bold py-2 rounded-lg">取消</button>}
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-xl font-bold mb-4">🎀 免費贈物列表 ({freeGifts.length})</h2>
+              {freeGifts.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <div className="text-4xl mb-2">🎁</div>
+                  <p>目前沒有免費贈物</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                  {freeGifts.map((gift) => (
+                    <div key={gift.id} className="flex items-center gap-3 p-3 bg-pink-50 rounded-lg border border-pink-200">
+                      {gift.image_url ? <img src={gift.image_url} alt="" className="w-12 h-12 object-cover rounded"/> : <div className="w-12 h-12 bg-pink-100 rounded flex items-center justify-center">🎀</div>}
+                      <div className="flex-1">
+                        <p className="font-medium">{gift.name}</p>
+                        <p className="text-sm text-gray-500">✨ 免費 | 剩餘 {gift.quantity}</p>
+                      </div>
+                      <button onClick={() => { setEditingFreeGift(gift); setFreeGiftForm({ name: gift.name, quantity: gift.quantity.toString(), description: gift.description || '', image_url: gift.image_url || '' }) }} className="text-blue-500 hover:text-blue-700">✏️</button>
+                      <button onClick={() => handleDeleteFreeGift(gift.id)} className="text-red-500 hover:text-red-700">🗑️</button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
