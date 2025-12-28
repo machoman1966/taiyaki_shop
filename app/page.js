@@ -31,15 +31,20 @@ export default function Home() {
   const [isRedeeming, setIsRedeeming] = useState(false)
   const [userHistory, setUserHistory] = useState({ draws: [], redemptions: [], codes: [], points: [], wins: [] })
   const [pityProgress, setPityProgress] = useState({ total: 0, current: 0, next: 35, milestone: 0, canClaim: false })
-  const [darkMode, setDarkMode] = useState(false)
+  const [darkMode, setDarkMode] = useState(true) // 預設暗色模式
+  const [showRulesPanel, setShowRulesPanel] = useState(false) // 側邊規則面板
   const [pendingShipping, setPendingShipping] = useState(null) // 待處理的郵寄訂單
 
-  // 深色模式初始化
+  // 深色模式初始化 - 預設開啟
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme')
-    if (savedTheme === 'dark') {
+    // 如果沒有儲存的設定或是 dark，就使用暗色模式
+    if (savedTheme !== 'light') {
       setDarkMode(true)
       document.documentElement.setAttribute('data-theme', 'dark')
+    } else {
+      setDarkMode(false)
+      document.documentElement.removeAttribute('data-theme')
     }
   }, [])
 
@@ -47,10 +52,10 @@ export default function Home() {
     const newMode = !darkMode
     setDarkMode(newMode)
     if (newMode) {
-      document.documentElement.setAttribute('data-theme', 'dark')
+      document.documentElement.removeAttribute('data-theme')
       localStorage.setItem('theme', 'dark')
     } else {
-      document.documentElement.removeAttribute('data-theme')
+      document.documentElement.setAttribute('data-theme', 'light')
       localStorage.setItem('theme', 'light')
     }
   }
@@ -470,20 +475,138 @@ export default function Home() {
         {darkMode ? '☀️' : '🌙'}
       </button>
 
+      {/* 規則說明按鈕 */}
+      <button
+        onClick={() => setShowRulesPanel(true)}
+        className="fixed top-4 left-4 z-40 bg-orange-500 hover:bg-orange-600 text-white p-3 rounded-full shadow-lg transition-all duration-300 hover:scale-110"
+        title="規則說明"
+      >
+        📜
+      </button>
+
+      {/* 側邊規則面板 */}
+      <div className={`fixed inset-0 z-50 transition-all duration-300 ${showRulesPanel ? 'visible' : 'invisible'}`}>
+        {/* 背景遮罩 */}
+        <div 
+          className={`absolute inset-0 bg-black transition-opacity duration-300 ${showRulesPanel ? 'opacity-50' : 'opacity-0'}`}
+          onClick={() => setShowRulesPanel(false)}
+        ></div>
+        
+        {/* 側邊面板 */}
+        <div className={`absolute left-0 top-0 h-full w-80 md:w-96 bg-gray-900 shadow-2xl transform transition-transform duration-300 ${showRulesPanel ? 'translate-x-0' : '-translate-x-full'} overflow-y-auto`}>
+          <div className="p-6">
+            {/* 關閉按鈕 */}
+            <button
+              onClick={() => setShowRulesPanel(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl"
+            >
+              ✕
+            </button>
+            
+            <h2 className="text-2xl font-bold text-orange-400 mb-6">📜 規則說明</h2>
+            
+            {/* 分頁介紹 */}
+            <div className="mb-6">
+              <h3 className="text-lg font-bold text-white mb-3 border-b border-gray-700 pb-2">🗂️ 分頁介紹</h3>
+              <div className="space-y-3">
+                <div className="bg-gray-800 rounded-lg p-3">
+                  <span className="text-orange-400 font-bold">🎁 兌換</span>
+                  <p className="text-gray-300 text-sm mt-1">使用鯛魚燒點數兌換獎品，或免費領取贈物（只需付運費）</p>
+                </div>
+                <div className="bg-gray-800 rounded-lg p-3">
+                  <span className="text-orange-400 font-bold">🎰 福引</span>
+                  <p className="text-gray-300 text-sm mt-1">查看獎品一覽並進行抽獎，每 35 抽達成天井可選擇獎品</p>
+                </div>
+                <div className="bg-gray-800 rounded-lg p-3">
+                  <span className="text-orange-400 font-bold">🎫 兌換碼</span>
+                  <p className="text-gray-300 text-sm mt-1">輸入活動兌換碼獲得鯛魚燒點數</p>
+                </div>
+                <div className="bg-gray-800 rounded-lg p-3">
+                  <span className="text-orange-400 font-bold">📋 紀錄</span>
+                  <p className="text-gray-300 text-sm mt-1">查看你的抽獎、兌換、中獎紀錄</p>
+                </div>
+                <div className="bg-gray-800 rounded-lg p-3">
+                  <span className="text-orange-400 font-bold">📦 郵寄</span>
+                  <p className="text-gray-300 text-sm mt-1">填寫郵寄收件資料（中獎後顯示）</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* 詳細規則 */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-white mb-3 border-b border-gray-700 pb-2">📋 詳細規則</h3>
+              
+              <div className="bg-orange-900/30 rounded-lg p-4 border border-orange-700/50">
+                <h4 className="font-bold text-orange-400 mb-2">🏠 關於本站</h4>
+                <p className="text-gray-300 text-sm">本網頁為 35p 的菁英植物園 Discord 伺服器內部點數兌換區，點數僅能透過伺服器內活動獲得。</p>
+              </div>
+              
+              <div className="bg-blue-900/30 rounded-lg p-4 border border-blue-700/50">
+                <h4 className="font-bold text-blue-400 mb-2">📦 運費說明</h4>
+                <p className="text-gray-300 text-sm mb-2">獎品運費由得獎者負擔，無論地球上哪個角落都寄給你！</p>
+                <p className="text-gray-400 text-sm">台灣地區運費參考：</p>
+                <ul className="text-gray-300 text-sm mt-1 space-y-1">
+                  <li>• 7-11 賣貨便：58 元</li>
+                  <li>• 郵政掛號：80 元</li>
+                </ul>
+              </div>
+              
+              <div className="bg-green-900/30 rounded-lg p-4 border border-green-700/50">
+                <h4 className="font-bold text-green-400 mb-2">🎰 福引說明</h4>
+                <ul className="text-gray-300 text-sm space-y-1">
+                  <li>• 單抽：消耗 <span className="text-green-400 font-bold">3 個鯛魚燒</span></li>
+                  <li>• 十連抽：消耗 <span className="text-green-400 font-bold">30 個鯛魚燒</span></li>
+                  <li>• 十連抽額外贈送 <span className="text-green-400 font-bold">3 個鯛魚燒</span></li>
+                  <li>• 每 35 抽達成天井，可選擇指定獎品</li>
+                </ul>
+              </div>
+              
+              <div className="bg-pink-900/30 rounded-lg p-4 border border-pink-700/50">
+                <h4 className="font-bold text-pink-400 mb-2">🎀 免費贈物</h4>
+                <ul className="text-gray-300 text-sm space-y-1">
+                  <li>• 只需支付運費即可領取</li>
+                  <li>• <span className="text-pink-400 font-bold">每人三個月限領一次</span>，多領不計</li>
+                </ul>
+              </div>
+              
+              <div className="bg-purple-900/30 rounded-lg p-4 border border-purple-700/50">
+                <h4 className="font-bold text-purple-400 mb-2">🎁 兌換方式</h4>
+                <ul className="text-gray-300 text-sm space-y-1">
+                  <li>• 中獎後請至賣貨便下單付運費</li>
+                  <li>• 或選擇郵寄，填寫收件資料</li>
+                </ul>
+              </div>
+            </div>
+            
+            {/* Discord 連結 */}
+            <div className="mt-6 pt-4 border-t border-gray-700">
+              <a 
+                href="https://discord.gg/VUXwBZQPTS" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="block w-full bg-[#5865F2] hover:bg-[#4752C4] text-white text-center font-bold py-3 rounded-lg transition"
+              >
+                🌸 加入 35p的菁英植物園 🌸
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="text-center mb-6">
-        <h1 className="text-4xl md:text-5xl font-bold text-orange-600 mb-2">🐟 鯛魚燒商城</h1>
-        <p className="text-gray-600">使用鯛魚燒點數兌換精美獎品</p>
+        <h1 className="text-4xl md:text-5xl font-bold text-orange-500 mb-2">🐟 鯛魚燒商城</h1>
+        <p className="text-gray-400">使用鯛魚燒點數兌換精美獎品</p>
         {user && user.id === ADMIN_ID && <a href="/admin" className="inline-block mt-2 text-sm text-orange-500 hover:text-orange-700 underline">🔧 管理後台</a>}
       </div>
 
-      {error && <div className="max-w-md mx-auto mb-6 p-4 bg-red-100 text-red-700 rounded-lg text-center">{error}</div>}
+      {error && <div className="max-w-md mx-auto mb-6 p-4 bg-red-900/50 text-red-300 rounded-lg text-center border border-red-700">{error}</div>}
 
       {!user ? (
         <div className="max-w-4xl mx-auto">
           {/* 獎品一覽（未登入也能看） */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">🎯 植物園福引抽獎</h2>
-            <p className="text-center text-gray-500 mb-6">登入後使用 3 個鯛魚燒抽一次，試試你的運氣！</p>
+          <div className="bg-gray-800 rounded-2xl shadow-lg p-6 mb-6 border border-gray-700">
+            <h2 className="text-2xl font-bold text-orange-400 mb-4 text-center">🎯 植物園福引抽獎</h2>
+            <p className="text-center text-gray-400 mb-6">登入後使用 3 個鯛魚燒抽一次，試試你的運氣！</p>
             
             {/* 獎品列表 */}
             <div className="space-y-3 mb-6">
