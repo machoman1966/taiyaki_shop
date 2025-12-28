@@ -30,6 +30,29 @@ export default function Home() {
   const [isRedeeming, setIsRedeeming] = useState(false)
   const [userHistory, setUserHistory] = useState({ draws: [], redemptions: [], codes: [], points: [], wins: [] })
   const [pityProgress, setPityProgress] = useState({ total: 0, current: 0, next: 35, canClaim: false })
+  const [darkMode, setDarkMode] = useState(false)
+  const [pendingShipping, setPendingShipping] = useState(null) // 待處理的郵寄訂單
+
+  // 深色模式初始化
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme')
+    if (savedTheme === 'dark') {
+      setDarkMode(true)
+      document.documentElement.setAttribute('data-theme', 'dark')
+    }
+  }, [])
+
+  const toggleDarkMode = () => {
+    const newMode = !darkMode
+    setDarkMode(newMode)
+    if (newMode) {
+      document.documentElement.setAttribute('data-theme', 'dark')
+      localStorage.setItem('theme', 'dark')
+    } else {
+      document.documentElement.removeAttribute('data-theme')
+      localStorage.setItem('theme', 'light')
+    }
+  }
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -74,6 +97,7 @@ export default function Home() {
       loadPrizes()
       checkWinHistory(user.id)
       loadUserHistory(user.id)
+      loadPendingShipping(user.id)
     }
   }, [user])
 
@@ -91,6 +115,20 @@ export default function Home() {
   const loadPrizes = async () => {
     const { data } = await supabase.from('prizes').select('*').gt('quantity', 0)
     if (data) setPrizes(data)
+  }
+
+  // 載入待處理的郵寄訂單（只有 pending 或 shipped 狀態才顯示）
+  const loadPendingShipping = async (discordId) => {
+    const { data } = await supabase
+      .from('shipping_orders')
+      .select('*')
+      .eq('discord_id', discordId)
+      .in('status', ['pending', 'shipped'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+    
+    setPendingShipping(data || null)
   }
 
   const checkWinHistory = async (discordId) => {
@@ -369,10 +407,19 @@ export default function Home() {
 
   return (
     <main className="min-h-screen p-4 md:p-8">
+      {/* 深色模式切換按鈕 */}
+      <button
+        onClick={toggleDarkMode}
+        className="fixed top-4 right-4 z-50 p-2 rounded-full bg-white shadow-lg hover:shadow-xl transition"
+        title={darkMode ? '切換淺色模式' : '切換深色模式'}
+      >
+        {darkMode ? '☀️' : '🌙'}
+      </button>
+
       <div className="text-center mb-6">
-        <h1 className="text-4xl md:text-5xl font-bold text-green-600 mb-2">🐟 鯛魚燒商城</h1>
+        <h1 className="text-4xl md:text-5xl font-bold text-orange-600 mb-2">🐟 鯛魚燒商城</h1>
         <p className="text-gray-600">使用鯛魚燒點數兌換精美獎品</p>
-        {user && user.id === ADMIN_ID && <a href="/admin" className="inline-block mt-2 text-sm text-green-500 hover:text-green-700 underline">🔧 管理後台</a>}
+        {user && user.id === ADMIN_ID && <a href="/admin" className="inline-block mt-2 text-sm text-orange-500 hover:text-orange-700 underline">🔧 管理後台</a>}
       </div>
 
       {error && <div className="max-w-md mx-auto mb-6 p-4 bg-red-100 text-red-700 rounded-lg text-center">{error}</div>}
@@ -550,15 +597,63 @@ export default function Home() {
             <div>
               <h2 className="text-2xl font-bold text-gray-800 mb-4">📦 郵寄資料</h2>
               <div className="bg-white rounded-2xl shadow-lg p-6 max-w-lg mx-auto">
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6"><p className="text-yellow-800 text-sm">💡 如果您選擇使用<strong>賣貨便</strong>，請直接到<a href={CONVENIENCE_STORE_LINK} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline ml-1">此連結</a>下單付運費即可，不需填寫此表單。</p><p className="text-yellow-800 text-sm mt-2">📮 此表單僅供選擇<strong>郵寄</strong>方式的用戶填寫。</p></div>
-                <form onSubmit={handleShippingSubmit} className="space-y-4">
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">獎品名稱 <span className="text-red-500">*</span></label><input type="text" value={shippingForm.itemName} onChange={(e) => setShippingForm({...shippingForm, itemName: e.target.value})} placeholder="請輸入您要領取的獎品名稱" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" required/></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">收件人姓名 <span className="text-red-500">*</span></label><input type="text" value={shippingForm.recipientName} onChange={(e) => setShippingForm({...shippingForm, recipientName: e.target.value})} placeholder="真實姓名" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" required/></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">聯絡電話 <span className="text-red-500">*</span></label><input type="tel" value={shippingForm.phone} onChange={(e) => setShippingForm({...shippingForm, phone: e.target.value})} placeholder="09XX-XXX-XXX" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" required/></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">郵寄地址 <span className="text-red-500">*</span></label><textarea value={shippingForm.address} onChange={(e) => setShippingForm({...shippingForm, address: e.target.value})} placeholder="完整郵寄地址（含郵遞區號）" rows={2} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" required/></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">備註（選填）</label><textarea value={shippingForm.notes} onChange={(e) => setShippingForm({...shippingForm, notes: e.target.value})} placeholder="其他需要說明的事項" rows={2} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"/></div>
-                  <button type="submit" className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition">📮 送出郵寄資料</button>
-                </form>
+                {/* 如果有待處理的郵寄訂單，顯示狀態 */}
+                {pendingShipping ? (
+                  <div>
+                    <div className="text-center mb-4">
+                      <div className="text-5xl mb-3">
+                        {pendingShipping.status === 'pending' ? '⏳' : '📬'}
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-800">
+                        {pendingShipping.status === 'pending' ? '訂單處理中' : '已寄出'}
+                      </h3>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">獎品</span>
+                        <span className="font-medium">{pendingShipping.item_name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">收件人</span>
+                        <span className="font-medium">{pendingShipping.recipient_name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">狀態</span>
+                        <span className={`px-2 py-1 rounded text-sm ${
+                          pendingShipping.status === 'pending' 
+                            ? 'bg-yellow-100 text-yellow-800' 
+                            : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {pendingShipping.status === 'pending' ? '待處理' : '已寄出'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">送出時間</span>
+                        <span className="text-sm text-gray-500">
+                          {new Date(pendingShipping.created_at).toLocaleString('zh-TW')}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-center text-gray-500 text-sm mt-4">
+                      管理員處理完成後，此區塊會自動隱藏
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                      <p className="text-yellow-800 text-sm">💡 如果您選擇使用<strong>賣貨便</strong>，請直接到<a href={CONVENIENCE_STORE_LINK} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline ml-1">此連結</a>下單付運費即可，不需填寫此表單。</p>
+                      <p className="text-yellow-800 text-sm mt-2">📮 此表單僅供選擇<strong>郵寄</strong>方式的用戶填寫。</p>
+                    </div>
+                    <form onSubmit={handleShippingSubmit} className="space-y-4">
+                      <div><label className="block text-sm font-medium text-gray-700 mb-1">獎品名稱 <span className="text-red-500">*</span></label><input type="text" value={shippingForm.itemName} onChange={(e) => setShippingForm({...shippingForm, itemName: e.target.value})} placeholder="請輸入您要領取的獎品名稱" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" required/></div>
+                      <div><label className="block text-sm font-medium text-gray-700 mb-1">收件人姓名 <span className="text-red-500">*</span></label><input type="text" value={shippingForm.recipientName} onChange={(e) => setShippingForm({...shippingForm, recipientName: e.target.value})} placeholder="真實姓名" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" required/></div>
+                      <div><label className="block text-sm font-medium text-gray-700 mb-1">聯絡電話 <span className="text-red-500">*</span></label><input type="tel" value={shippingForm.phone} onChange={(e) => setShippingForm({...shippingForm, phone: e.target.value})} placeholder="09XX-XXX-XXX" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" required/></div>
+                      <div><label className="block text-sm font-medium text-gray-700 mb-1">郵寄地址 <span className="text-red-500">*</span></label><textarea value={shippingForm.address} onChange={(e) => setShippingForm({...shippingForm, address: e.target.value})} placeholder="完整郵寄地址（含郵遞區號）" rows={2} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" required/></div>
+                      <div><label className="block text-sm font-medium text-gray-700 mb-1">備註（選填）</label><textarea value={shippingForm.notes} onChange={(e) => setShippingForm({...shippingForm, notes: e.target.value})} placeholder="其他需要說明的事項" rows={2} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"/></div>
+                      <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg transition">📮 送出郵寄資料</button>
+                    </form>
+                  </>
+                )}
               </div>
             </div>
           )}

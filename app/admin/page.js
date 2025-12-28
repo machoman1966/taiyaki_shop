@@ -35,6 +35,34 @@ export default function AdminPage() {
   const [userSearch, setUserSearch] = useState('')
   const [selectedUser, setSelectedUser] = useState(null)
   const [pointsAdjust, setPointsAdjust] = useState('')
+  const [darkMode, setDarkMode] = useState(false)
+
+  // 深色模式初始化
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme')
+    if (savedTheme === 'dark') {
+      setDarkMode(true)
+      document.documentElement.setAttribute('data-theme', 'dark')
+    }
+  }, [])
+
+  const toggleDarkMode = () => {
+    const newMode = !darkMode
+    setDarkMode(newMode)
+    if (newMode) {
+      document.documentElement.setAttribute('data-theme', 'dark')
+      localStorage.setItem('theme', 'dark')
+    } else {
+      document.documentElement.removeAttribute('data-theme')
+      localStorage.setItem('theme', 'light')
+    }
+  }
+
+  // 檢查兌換碼是否過期
+  const isCodeExpired = (code) => {
+    if (!code.end_time) return false
+    return new Date(code.end_time) < new Date()
+  }
 
   useEffect(() => {
     const savedUser = localStorage.getItem('discord_user')
@@ -299,6 +327,15 @@ export default function AdminPage() {
 
   return (
     <main className="min-h-screen p-4 md:p-8 bg-gray-100">
+      {/* 深色模式切換按鈕 */}
+      <button
+        onClick={toggleDarkMode}
+        className="fixed top-4 right-4 z-50 p-2 rounded-full bg-white shadow-lg hover:shadow-xl transition"
+        title={darkMode ? '切換淺色模式' : '切換深色模式'}
+      >
+        {darkMode ? '☀️' : '🌙'}
+      </button>
+
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-orange-600">🔧 管理後台</h1>
@@ -429,13 +466,28 @@ export default function AdminPage() {
               <h2 className="text-xl font-bold mb-4">兌換碼列表 ({codes.length})</h2>
               <div className="space-y-3 max-h-[500px] overflow-y-auto">
                 {codes.map((code) => (
-                  <div key={code.id} className={`p-3 rounded-lg ${code.is_active ? 'bg-green-50' : 'bg-gray-100'}`}>
+                  <div key={code.id} className={`p-3 rounded-lg ${
+                    isCodeExpired(code) ? 'bg-red-50 border border-red-200' :
+                    code.is_active ? 'bg-green-50' : 'bg-gray-100'
+                  }`}>
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-mono font-bold text-lg">{code.code}</span>
-                      <span className={`px-2 py-1 rounded text-xs ${code.is_active ? 'bg-green-200 text-green-800' : 'bg-gray-300 text-gray-600'}`}>{code.is_active ? '啟用' : '停用'}</span>
+                      <div className="flex gap-1">
+                        {isCodeExpired(code) && (
+                          <span className="px-2 py-1 rounded text-xs bg-red-200 text-red-800">已過期</span>
+                        )}
+                        <span className={`px-2 py-1 rounded text-xs ${code.is_active ? 'bg-green-200 text-green-800' : 'bg-gray-300 text-gray-600'}`}>
+                          {code.is_active ? '啟用' : '停用'}
+                        </span>
+                      </div>
                     </div>
                     <p className="text-sm text-gray-600">🐟 {code.points} 點 | 使用 {code.used_count}/{code.max_uses}</p>
                     {code.description && <p className="text-sm text-gray-500">{code.description}</p>}
+                    {code.end_time && (
+                      <p className={`text-xs mt-1 ${isCodeExpired(code) ? 'text-red-500' : 'text-gray-400'}`}>
+                        到期：{new Date(code.end_time).toLocaleString('zh-TW')}
+                      </p>
+                    )}
                     <div className="flex gap-2 mt-2">
                       <button onClick={() => toggleCodeActive(code)} className={`text-xs px-2 py-1 rounded ${code.is_active ? 'bg-gray-200' : 'bg-green-200'}`}>{code.is_active ? '停用' : '啟用'}</button>
                       <button onClick={() => { setEditingCode(code); setCodeForm({ code: code.code, points: code.points.toString(), max_uses: code.max_uses.toString(), description: code.description || '', start_time: code.start_time || '', end_time: code.end_time || '' }) }} className="text-blue-500 text-xs">編輯</button>
