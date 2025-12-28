@@ -30,7 +30,10 @@ export default function AdminPage() {
 
   const [rewardForm, setRewardForm] = useState({ name: '', cost: '', quantity: '', description: '', image_url: '' })
   const [freeGiftForm, setFreeGiftForm] = useState({ name: '', quantity: '', description: '', image_url: '' }) // 免費贈物表單
-  const [prizeForm, setPrizeForm] = useState({ name: '', quantity: '', probability: '0.01', description: '', image_url: '' })
+  const [prizeForm, setPrizeForm] = useState({ 
+    name: '', quantity: '', probability: '0.01', description: '', image_url: '',
+    rank: '5', rank_name: '五等賞', rank_color: '#6B7280', condition: '全新', display_order: '999'
+  })
   const [codeForm, setCodeForm] = useState({ code: '', points: '', max_uses: '1', description: '', start_time: '', end_time: '' })
   
   const [editingReward, setEditingReward] = useState(null)
@@ -38,6 +41,20 @@ export default function AdminPage() {
   const [editingPrize, setEditingPrize] = useState(null)
   const [editingCode, setEditingCode] = useState(null)
   const [uploading, setUploading] = useState(false)
+  
+  // 預設等級選項
+  const rankOptions = [
+    { rank: 5, name: '五等賞', color: '#6B7280' },
+    { rank: 4, name: '四等賞', color: '#10B981' },
+    { rank: 3, name: '三等賞', color: '#F97316' },
+    { rank: 2, name: '二等賞', color: '#3B82F6' },
+    { rank: 1, name: '一等賞', color: '#EF4444' },
+    { rank: 0, name: '特賞', color: '#F59E0B' },
+    { rank: -1, name: '隱藏獎', color: '#EC4899' },
+  ]
+  
+  // 物品狀態選項
+  const conditionOptions = ['全新', '拆檢', '拆檢無缺損', '拆擺']
   
   // 用戶管理
   const [users, setUsers] = useState([])
@@ -109,7 +126,7 @@ export default function AdminPage() {
   }
 
   const loadPrizes = async () => {
-    const { data } = await supabase.from('prizes').select('*').order('id', { ascending: true })
+    const { data } = await supabase.from('prizes').select('*').order('display_order', { ascending: true }).order('rank', { ascending: true })
     if (data) setPrizes(data)
   }
 
@@ -315,7 +332,18 @@ export default function AdminPage() {
       return
     }
     try {
-      const data = { name: prizeForm.name, quantity: parseInt(prizeForm.quantity), probability: parseFloat(prizeForm.probability), description: prizeForm.description || null, image_url: prizeForm.image_url || null }
+      const data = { 
+        name: prizeForm.name, 
+        quantity: parseInt(prizeForm.quantity), 
+        probability: parseFloat(prizeForm.probability), 
+        description: prizeForm.description || null, 
+        image_url: prizeForm.image_url || null,
+        rank: parseInt(prizeForm.rank),
+        rank_name: prizeForm.rank_name,
+        rank_color: prizeForm.rank_color,
+        condition: prizeForm.condition,
+        display_order: parseInt(prizeForm.display_order) || 999
+      }
       if (editingPrize) {
         await supabase.from('prizes').update(data).eq('id', editingPrize.id)
         setMessage({ text: '✅ 福引獎品已更新', type: 'success' })
@@ -323,7 +351,7 @@ export default function AdminPage() {
         await supabase.from('prizes').insert(data)
         setMessage({ text: '✅ 福引獎品已新增', type: 'success' })
       }
-      setPrizeForm({ name: '', quantity: '', probability: '0.01', description: '', image_url: '' })
+      setPrizeForm({ name: '', quantity: '', probability: '0.01', description: '', image_url: '', rank: '5', rank_name: '五等賞', rank_color: '#6B7280', condition: '全新', display_order: '999' })
       setEditingPrize(null)
       loadPrizes()
     } catch (err) { setMessage({ text: '操作失敗', type: 'error' }) }
@@ -551,9 +579,53 @@ export default function AdminPage() {
               <h2 className="text-xl font-bold mb-4">{editingPrize ? '編輯福引獎品' : '新增福引獎品'}</h2>
               <div className="space-y-4">
                 <div><label className="block text-sm font-medium text-gray-700 mb-1">名稱 *</label><input type="text" value={prizeForm.name} onChange={(e) => setPrizeForm({...prizeForm, name: e.target.value})} className="w-full px-3 py-2 border rounded-lg"/></div>
+                
+                {/* 等級選擇 */}
                 <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">等級 *</label>
+                    <select 
+                      value={prizeForm.rank} 
+                      onChange={(e) => {
+                        const selected = rankOptions.find(r => r.rank === parseInt(e.target.value))
+                        setPrizeForm({
+                          ...prizeForm, 
+                          rank: e.target.value,
+                          rank_name: selected?.name || '五等賞',
+                          rank_color: selected?.color || '#6B7280'
+                        })
+                      }} 
+                      className="w-full px-3 py-2 border rounded-lg"
+                    >
+                      {rankOptions.map(opt => (
+                        <option key={opt.rank} value={opt.rank}>{opt.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">物品狀態</label>
+                    <select value={prizeForm.condition} onChange={(e) => setPrizeForm({...prizeForm, condition: e.target.value})} className="w-full px-3 py-2 border rounded-lg">
+                      {conditionOptions.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                
+                {/* 顏色預覽 */}
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700">等級顏色：</label>
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full border" style={{ backgroundColor: prizeForm.rank_color }}></div>
+                    <input type="color" value={prizeForm.rank_color} onChange={(e) => setPrizeForm({...prizeForm, rank_color: e.target.value})} className="w-10 h-8 cursor-pointer"/>
+                    <span className="text-sm text-gray-500">{prizeForm.rank_color}</span>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-4">
                   <div><label className="block text-sm font-medium text-gray-700 mb-1">數量 *</label><input type="number" value={prizeForm.quantity} onChange={(e) => setPrizeForm({...prizeForm, quantity: e.target.value})} className="w-full px-3 py-2 border rounded-lg"/></div>
                   <div><label className="block text-sm font-medium text-gray-700 mb-1">機率</label><input type="number" step="0.001" value={prizeForm.probability} onChange={(e) => setPrizeForm({...prizeForm, probability: e.target.value})} className="w-full px-3 py-2 border rounded-lg"/></div>
+                  <div><label className="block text-sm font-medium text-gray-700 mb-1">排序</label><input type="number" value={prizeForm.display_order} onChange={(e) => setPrizeForm({...prizeForm, display_order: e.target.value})} placeholder="數字小在前" className="w-full px-3 py-2 border rounded-lg"/></div>
                 </div>
                 <div><label className="block text-sm font-medium text-gray-700 mb-1">說明</label><textarea value={prizeForm.description} onChange={(e) => setPrizeForm({...prizeForm, description: e.target.value})} className="w-full px-3 py-2 border rounded-lg" rows={2}/></div>
                 <div>
@@ -565,18 +637,39 @@ export default function AdminPage() {
                 </div>
                 <div className="flex gap-2">
                   <button onClick={handleSavePrize} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 rounded-lg">{editingPrize ? '更新' : '新增'}</button>
-                  {editingPrize && <button onClick={() => { setEditingPrize(null); setPrizeForm({ name: '', quantity: '', probability: '0.01', description: '', image_url: '' }) }} className="px-4 bg-gray-300 hover:bg-gray-400 text-gray-700 font-bold py-2 rounded-lg">取消</button>}
+                  {editingPrize && <button onClick={() => { setEditingPrize(null); setPrizeForm({ name: '', quantity: '', probability: '0.01', description: '', image_url: '', rank: '5', rank_name: '五等賞', rank_color: '#6B7280', condition: '全新', display_order: '999' }) }} className="px-4 bg-gray-300 hover:bg-gray-400 text-gray-700 font-bold py-2 rounded-lg">取消</button>}
                 </div>
               </div>
             </div>
             <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-xl font-bold mb-4">福引獎品列表 ({prizes.length})</h2>
+              <h2 className="text-xl font-bold mb-4">🎰 福引獎品列表 ({prizes.length})</h2>
               <div className="space-y-3 max-h-[500px] overflow-y-auto">
                 {prizes.map((prize) => (
-                  <div key={prize.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div key={prize.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border-l-4" style={{ borderLeftColor: prize.rank_color || '#6B7280' }}>
                     {prize.image_url ? <img src={prize.image_url} alt="" className="w-12 h-12 object-cover rounded"/> : <div className="w-12 h-12 bg-orange-100 rounded flex items-center justify-center">🎰</div>}
-                    <div className="flex-1"><p className="font-medium">{prize.name}</p><p className="text-sm text-gray-500">機率 {prize.probability} | 剩餘 {prize.quantity}</p></div>
-                    <button onClick={() => { setEditingPrize(prize); setPrizeForm({ name: prize.name, quantity: prize.quantity.toString(), probability: prize.probability.toString(), description: prize.description || '', image_url: prize.image_url || '' }) }} className="text-blue-500 hover:text-blue-700">✏️</button>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded text-xs text-white font-bold" style={{ backgroundColor: prize.rank_color || '#6B7280' }}>{prize.rank_name || '五等賞'}</span>
+                        <span className="text-xs text-gray-500">({prize.condition || '全新'})</span>
+                      </div>
+                      <p className="font-medium">{prize.name}</p>
+                      <p className="text-sm text-gray-500">機率 {prize.probability} | 剩餘 {prize.quantity}</p>
+                    </div>
+                    <button onClick={() => { 
+                      setEditingPrize(prize); 
+                      setPrizeForm({ 
+                        name: prize.name, 
+                        quantity: prize.quantity.toString(), 
+                        probability: prize.probability.toString(), 
+                        description: prize.description || '', 
+                        image_url: prize.image_url || '',
+                        rank: (prize.rank ?? 5).toString(),
+                        rank_name: prize.rank_name || '五等賞',
+                        rank_color: prize.rank_color || '#6B7280',
+                        condition: prize.condition || '全新',
+                        display_order: (prize.display_order ?? 999).toString()
+                      }) 
+                    }} className="text-blue-500 hover:text-blue-700">✏️</button>
                     <button onClick={() => handleDeletePrize(prize.id)} className="text-red-500 hover:text-red-700">🗑️</button>
                   </div>
                 ))}
