@@ -28,6 +28,7 @@ export default function Home() {
   })
   const [redeemCode, setRedeemCode] = useState('')
   const [isRedeeming, setIsRedeeming] = useState(false)
+  const [userHistory, setUserHistory] = useState({ draws: [], redemptions: [], codes: [] })
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -71,6 +72,7 @@ export default function Home() {
       loadRewards()
       loadPrizes()
       checkWinHistory(user.id)
+      loadUserHistory(user.id)
     }
   }, [user])
 
@@ -94,6 +96,38 @@ export default function Home() {
     const { data: redemptions } = await supabase.from('redemption_orders').select('id').eq('discord_id', discordId).limit(1)
     const { data: draws } = await supabase.from('draw_records').select('id, prize_won').eq('discord_id', discordId).not('prize_won', 'ilike', '%銘謝惠顧%').limit(1)
     setHasWonPrize((redemptions && redemptions.length > 0) || (draws && draws.length > 0))
+  }
+
+  const loadUserHistory = async (discordId) => {
+    // 載入福引紀錄
+    const { data: draws } = await supabase
+      .from('draw_records')
+      .select('*')
+      .eq('discord_id', discordId)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    
+    // 載入兌換紀錄
+    const { data: redemptions } = await supabase
+      .from('redemption_orders')
+      .select('*')
+      .eq('discord_id', discordId)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    
+    // 載入兌換碼使用紀錄
+    const { data: codes } = await supabase
+      .from('code_redemptions')
+      .select('*, exchange_codes(code, points, description)')
+      .eq('discord_id', discordId)
+      .order('redeemed_at', { ascending: false })
+      .limit(50)
+    
+    setUserHistory({
+      draws: draws || [],
+      redemptions: redemptions || [],
+      codes: codes || []
+    })
   }
 
   const handleLogout = () => {
@@ -307,14 +341,14 @@ export default function Home() {
     setIsRedeeming(false)
   }
 
-  if (loading) return <main className="min-h-screen flex items-center justify-center"><div className="text-2xl text-orange-600">載入中...</div></main>
+  if (loading) return <main className="min-h-screen flex items-center justify-center"><div className="text-2xl text-green-600">載入中...</div></main>
 
   return (
     <main className="min-h-screen p-4 md:p-8">
       <div className="text-center mb-6">
-        <h1 className="text-4xl md:text-5xl font-bold text-orange-600 mb-2">🐟 鯛魚燒商城</h1>
+        <h1 className="text-4xl md:text-5xl font-bold text-green-600 mb-2">🐟 鯛魚燒商城</h1>
         <p className="text-gray-600">使用鯛魚燒點數兌換精美獎品</p>
-        {user && user.id === ADMIN_ID && <a href="/admin" className="inline-block mt-2 text-sm text-orange-500 hover:text-orange-700 underline">🔧 管理後台</a>}
+        {user && user.id === ADMIN_ID && <a href="/admin" className="inline-block mt-2 text-sm text-green-500 hover:text-green-700 underline">🔧 管理後台</a>}
       </div>
 
       {error && <div className="max-w-md mx-auto mb-6 p-4 bg-red-100 text-red-700 rounded-lg text-center">{error}</div>}
@@ -334,7 +368,7 @@ export default function Home() {
             <div className="space-y-4 text-gray-700">
               <div className="bg-orange-50 rounded-lg p-4"><h3 className="font-bold text-orange-700 mb-2">🏠 關於本站</h3><p className="text-sm">本網頁為 35p 的菁英植物園 Discord 伺服器內部點數兌換區，點數僅能透過伺服器內活動獲得。</p></div>
               <div className="bg-blue-50 rounded-lg p-4"><h3 className="font-bold text-blue-700 mb-2">📦 運費說明</h3><p className="text-sm mb-2">獎品運費由得獎者負擔，無論地球上哪個角落都寄給你！</p><p className="text-sm font-medium">台灣地區運費參考：</p><ul className="list-disc list-inside ml-2 mt-1 text-sm"><li>7-11 賣貨便：58 元</li><li>郵政掛號：80 元</li></ul></div>
-              <div className="bg-green-50 rounded-lg p-4"><h3 className="font-bold text-green-700 mb-2">🎰 福引說明</h3><ul className="text-sm space-y-1"><li>• 單抽：消耗 <span className="font-bold text-orange-600">3 個鯛魚燒</span></li><li>• 十連抽：消耗 <span className="font-bold text-orange-600">30 個鯛魚燒</span>，額外贈送 <span className="font-bold text-orange-600">3 個鯛魚燒</span></li><li>• 每 35 抽達成天井，可選擇指定獎品</li></ul></div>
+              <div className="bg-green-50 rounded-lg p-4"><h3 className="font-bold text-green-700 mb-2">🎰 福引說明</h3><ul className="text-sm space-y-1"><li>• 單抽：消耗 <span className="font-bold text-green-600">3 個鯛魚燒</span></li><li>• 十連抽：消耗 <span className="font-bold text-green-600">30 個鯛魚燒</span>，額外贈送 <span className="font-bold text-green-600">3 個鯛魚燒</span></li><li>• 每 35 抽達成天井，可選擇指定獎品</li></ul></div>
               <div className="bg-purple-50 rounded-lg p-4"><h3 className="font-bold text-purple-700 mb-2">🎁 兌換方式</h3><ul className="text-sm space-y-1"><li>• 中獎後請至賣貨便下單付運費</li><li>• 或選擇郵寄，填寫收件資料</li></ul></div>
             </div>
           </div>
@@ -344,13 +378,13 @@ export default function Home() {
           <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-4">
-                <img src={user.avatar} alt={user.displayName} className="w-16 h-16 rounded-full border-4 border-orange-200"/>
+                <img src={user.avatar} alt={user.displayName} className="w-16 h-16 rounded-full border-4 border-green-200"/>
                 <div><p className="text-gray-600 text-sm">歡迎回來</p><p className="text-xl font-bold text-gray-800">{user.displayName}</p><p className="text-gray-500 text-sm">@{user.username}</p></div>
               </div>
-              <div className="text-right"><p className="text-gray-600 text-sm">你的鯛魚燒</p><p className="text-3xl font-bold text-orange-600">🐟 {dbUser?.points?.toLocaleString() || 0} 個</p>{dbUser?.notFound && <p className="text-xs text-red-500 mt-1">尚未在伺服器獲得點數</p>}</div>
+              <div className="text-right"><p className="text-gray-600 text-sm">你的鯛魚燒</p><p className="text-3xl font-bold text-green-600">🐟 {dbUser?.points?.toLocaleString() || 0} 個</p>{dbUser?.notFound && <p className="text-xs text-red-500 mt-1">尚未在伺服器獲得點數</p>}</div>
             </div>
             <div className="mt-4 pt-4 border-t flex justify-between items-center">
-              <button onClick={refreshPoints} className="text-orange-500 hover:text-orange-700 text-sm">🔄 重新整理點數</button>
+              <button onClick={refreshPoints} className="text-green-500 hover:text-green-700 text-sm">🔄 重新整理點數</button>
               <button onClick={handleLogout} className="text-gray-500 hover:text-gray-700 text-sm">登出</button>
             </div>
           </div>
@@ -365,10 +399,11 @@ export default function Home() {
 
           <div className="mb-6">
             <div className="flex bg-white rounded-xl shadow p-1 flex-wrap">
-              <button onClick={() => setActiveTab('rewards')} className={`flex-1 py-3 px-4 rounded-lg font-medium transition min-w-[80px] ${activeTab === 'rewards' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-100'}`}>🎁 兌換獎品</button>
-              <button onClick={() => setActiveTab('gacha')} className={`flex-1 py-3 px-4 rounded-lg font-medium transition min-w-[80px] ${activeTab === 'gacha' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-100'}`}>🎰 福引抽獎</button>
-              <button onClick={() => setActiveTab('code')} className={`flex-1 py-3 px-4 rounded-lg font-medium transition min-w-[80px] ${activeTab === 'code' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-100'}`}>🎫 兌換碼</button>
-              {hasWonPrize && <button onClick={() => setActiveTab('shipping')} className={`flex-1 py-3 px-4 rounded-lg font-medium transition min-w-[80px] ${activeTab === 'shipping' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-100'}`}>📦 郵寄資料</button>}
+              <button onClick={() => setActiveTab('rewards')} className={`flex-1 py-3 px-4 rounded-lg font-medium transition min-w-[70px] ${activeTab === 'rewards' ? 'bg-green-500 text-white' : 'text-gray-600 hover:bg-green-100'}`}>🎁 兌換</button>
+              <button onClick={() => setActiveTab('gacha')} className={`flex-1 py-3 px-4 rounded-lg font-medium transition min-w-[70px] ${activeTab === 'gacha' ? 'bg-green-500 text-white' : 'text-gray-600 hover:bg-green-100'}`}>🎰 福引</button>
+              <button onClick={() => setActiveTab('code')} className={`flex-1 py-3 px-4 rounded-lg font-medium transition min-w-[70px] ${activeTab === 'code' ? 'bg-green-500 text-white' : 'text-gray-600 hover:bg-green-100'}`}>🎫 兌換碼</button>
+              <button onClick={() => setActiveTab('history')} className={`flex-1 py-3 px-4 rounded-lg font-medium transition min-w-[70px] ${activeTab === 'history' ? 'bg-green-500 text-white' : 'text-gray-600 hover:bg-green-100'}`}>📋 紀錄</button>
+              {hasWonPrize && <button onClick={() => setActiveTab('shipping')} className={`flex-1 py-3 px-4 rounded-lg font-medium transition min-w-[70px] ${activeTab === 'shipping' ? 'bg-green-500 text-white' : 'text-gray-600 hover:bg-green-100'}`}>📦 郵寄</button>}
             </div>
           </div>
 
@@ -379,14 +414,14 @@ export default function Home() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {rewards.map((reward) => (
                     <div key={reward.id} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition">
-                      <div className="h-48 bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center">
+                      <div className="h-48 bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center">
                         {reward.image_url ? <img src={reward.image_url} alt={reward.name} className="w-full h-full object-cover"/> : <span className="text-6xl">🎁</span>}
                       </div>
                       <div className="p-4">
                         <h3 className="text-lg font-bold text-gray-800 mb-1">{reward.name}</h3>
                         {reward.description && <p className="text-sm text-gray-500 mb-2">{reward.description}</p>}
-                        <div className="flex justify-between items-center mb-3"><span className="text-orange-600 font-bold">🐟 {reward.cost} 個</span><span className="text-gray-500 text-sm">剩餘 {reward.quantity}</span></div>
-                        <button onClick={() => handleRedeem(reward)} disabled={!dbUser || dbUser.points < reward.cost} className={`w-full py-2 rounded-lg font-bold transition ${dbUser && dbUser.points >= reward.cost ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>{!dbUser || dbUser.points < reward.cost ? '點數不足' : '兌換'}</button>
+                        <div className="flex justify-between items-center mb-3"><span className="text-green-600 font-bold">🐟 {reward.cost} 個</span><span className="text-gray-500 text-sm">剩餘 {reward.quantity}</span></div>
+                        <button onClick={() => handleRedeem(reward)} disabled={!dbUser || dbUser.points < reward.cost} className={`w-full py-2 rounded-lg font-bold transition ${dbUser && dbUser.points >= reward.cost ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}>{!dbUser || dbUser.points < reward.cost ? '點數不足' : '兌換'}</button>
                       </div>
                     </div>
                   ))}
@@ -399,7 +434,7 @@ export default function Home() {
             <div>
               <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">🎰 福引抽獎</h2>
               <div className="bg-white rounded-2xl shadow-lg p-8 max-w-lg mx-auto">
-                <div className="text-center mb-6"><p className="text-gray-600">單抽：<span className="text-orange-600 font-bold">3 個鯛魚燒</span></p><p className="text-gray-600">十連抽：<span className="text-orange-600 font-bold">30 個鯛魚燒</span><span className="text-green-600 ml-2">（送 3 個回饋！）</span></p></div>
+                <div className="text-center mb-6"><p className="text-gray-600">單抽：<span className="text-green-600 font-bold">3 個鯛魚燒</span></p><p className="text-gray-600">十連抽：<span className="text-green-600 font-bold">30 個鯛魚燒</span><span className="text-green-600 ml-2">（送 3 個回饋！）</span></p></div>
                 <div className="h-48 flex items-center justify-center mb-6 bg-gradient-to-br from-orange-50 to-yellow-50 rounded-xl">
                   {isDrawing ? <div className="text-center"><div className="animate-bounce text-6xl mb-2">🎰</div><p className="text-gray-600">抽獎中...</p></div>
                   : drawResults.length > 0 ? <div className="text-center w-full px-4"><p className="font-bold mb-2">十連抽結果：</p><div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto">{drawResults.map((result, idx) => <div key={idx} className={`text-sm p-2 rounded ${result.isWin ? 'bg-yellow-100 text-yellow-800 font-bold' : 'bg-gray-100 text-gray-600'}`}>{idx + 1}. {result.name}</div>)}</div></div>
@@ -463,20 +498,111 @@ export default function Home() {
               <div className="bg-white rounded-2xl shadow-lg p-6 max-w-lg mx-auto">
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6"><p className="text-yellow-800 text-sm">💡 如果您選擇使用<strong>賣貨便</strong>，請直接到<a href={CONVENIENCE_STORE_LINK} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline ml-1">此連結</a>下單付運費即可，不需填寫此表單。</p><p className="text-yellow-800 text-sm mt-2">📮 此表單僅供選擇<strong>郵寄</strong>方式的用戶填寫。</p></div>
                 <form onSubmit={handleShippingSubmit} className="space-y-4">
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">獎品名稱 <span className="text-red-500">*</span></label><input type="text" value={shippingForm.itemName} onChange={(e) => setShippingForm({...shippingForm, itemName: e.target.value})} placeholder="請輸入您要領取的獎品名稱" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" required/></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">收件人姓名 <span className="text-red-500">*</span></label><input type="text" value={shippingForm.recipientName} onChange={(e) => setShippingForm({...shippingForm, recipientName: e.target.value})} placeholder="真實姓名" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" required/></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">聯絡電話 <span className="text-red-500">*</span></label><input type="tel" value={shippingForm.phone} onChange={(e) => setShippingForm({...shippingForm, phone: e.target.value})} placeholder="09XX-XXX-XXX" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" required/></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">郵寄地址 <span className="text-red-500">*</span></label><textarea value={shippingForm.address} onChange={(e) => setShippingForm({...shippingForm, address: e.target.value})} placeholder="完整郵寄地址（含郵遞區號）" rows={2} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" required/></div>
-                  <div><label className="block text-sm font-medium text-gray-700 mb-1">備註（選填）</label><textarea value={shippingForm.notes} onChange={(e) => setShippingForm({...shippingForm, notes: e.target.value})} placeholder="其他需要說明的事項" rows={2} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"/></div>
-                  <button type="submit" className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg transition">📮 送出郵寄資料</button>
+                  <div><label className="block text-sm font-medium text-gray-700 mb-1">獎品名稱 <span className="text-red-500">*</span></label><input type="text" value={shippingForm.itemName} onChange={(e) => setShippingForm({...shippingForm, itemName: e.target.value})} placeholder="請輸入您要領取的獎品名稱" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" required/></div>
+                  <div><label className="block text-sm font-medium text-gray-700 mb-1">收件人姓名 <span className="text-red-500">*</span></label><input type="text" value={shippingForm.recipientName} onChange={(e) => setShippingForm({...shippingForm, recipientName: e.target.value})} placeholder="真實姓名" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" required/></div>
+                  <div><label className="block text-sm font-medium text-gray-700 mb-1">聯絡電話 <span className="text-red-500">*</span></label><input type="tel" value={shippingForm.phone} onChange={(e) => setShippingForm({...shippingForm, phone: e.target.value})} placeholder="09XX-XXX-XXX" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" required/></div>
+                  <div><label className="block text-sm font-medium text-gray-700 mb-1">郵寄地址 <span className="text-red-500">*</span></label><textarea value={shippingForm.address} onChange={(e) => setShippingForm({...shippingForm, address: e.target.value})} placeholder="完整郵寄地址（含郵遞區號）" rows={2} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" required/></div>
+                  <div><label className="block text-sm font-medium text-gray-700 mb-1">備註（選填）</label><textarea value={shippingForm.notes} onChange={(e) => setShippingForm({...shippingForm, notes: e.target.value})} placeholder="其他需要說明的事項" rows={2} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"/></div>
+                  <button type="submit" className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition">📮 送出郵寄資料</button>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'history' && (
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">📋 我的紀錄</h2>
+              <div className="space-y-6">
+                {/* 福引紀錄 */}
+                <div className="bg-white rounded-2xl shadow-lg p-6">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    🎰 福引紀錄
+                    <span className="text-sm font-normal text-gray-500">（共 {userHistory.draws.length} 次）</span>
+                  </h3>
+                  {userHistory.draws.length === 0 ? (
+                    <p className="text-gray-500 text-center py-4">尚無福引紀錄</p>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {userHistory.draws.map((draw, idx) => (
+                        <div key={idx} className={`flex justify-between items-center p-3 rounded-lg ${draw.prize_won?.includes('銘謝惠顧') ? 'bg-gray-50' : 'bg-yellow-50'}`}>
+                          <div>
+                            <span className={`font-medium ${draw.prize_won?.includes('銘謝惠顧') ? 'text-gray-600' : 'text-yellow-700'}`}>
+                              {draw.prize_won || '未知'}
+                            </span>
+                          </div>
+                          <span className="text-sm text-gray-500">
+                            {new Date(draw.created_at).toLocaleString('zh-TW')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 兌換紀錄 */}
+                <div className="bg-white rounded-2xl shadow-lg p-6">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    🎁 兌換紀錄
+                    <span className="text-sm font-normal text-gray-500">（共 {userHistory.redemptions.length} 次）</span>
+                  </h3>
+                  {userHistory.redemptions.length === 0 ? (
+                    <p className="text-gray-500 text-center py-4">尚無兌換紀錄</p>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {userHistory.redemptions.map((redemption, idx) => (
+                        <div key={idx} className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                          <div>
+                            <span className="font-medium text-green-700">{redemption.item_name}</span>
+                            <span className="text-sm text-gray-500 ml-2">-{redemption.points_spent} 點</span>
+                          </div>
+                          <span className="text-sm text-gray-500">
+                            {new Date(redemption.created_at).toLocaleString('zh-TW')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 兌換碼紀錄 */}
+                <div className="bg-white rounded-2xl shadow-lg p-6">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    🎫 兌換碼紀錄
+                    <span className="text-sm font-normal text-gray-500">（共 {userHistory.codes.length} 次）</span>
+                  </h3>
+                  {userHistory.codes.length === 0 ? (
+                    <p className="text-gray-500 text-center py-4">尚無兌換碼紀錄</p>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {userHistory.codes.map((code, idx) => (
+                        <div key={idx} className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+                          <div>
+                            <span className="font-mono font-medium text-purple-700">{code.exchange_codes?.code}</span>
+                            <span className="text-sm text-green-600 ml-2">+{code.exchange_codes?.points} 點</span>
+                            {code.exchange_codes?.description && (
+                              <span className="text-sm text-gray-500 ml-2">({code.exchange_codes.description})</span>
+                            )}
+                          </div>
+                          <span className="text-sm text-gray-500">
+                            {new Date(code.redeemed_at).toLocaleString('zh-TW')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
         </div>
       )}
 
-      <footer className="text-center mt-12 text-gray-500 text-sm"><p>在 Discord 使用 /鯛魚燒 查看點數</p><p className="mt-1">巫女様神社 ⛩️</p></footer>
+      <footer className="text-center mt-12 text-gray-500 text-sm">
+        <p>在 Discord 使用 /鯛魚燒 查看點數</p>
+        <a href="https://discord.gg/VUXwBZQPTS" target="_blank" rel="noopener noreferrer" className="inline-block mt-2 text-green-600 hover:text-green-800 font-medium">
+          🌸 35p的菁英植物園 🌸
+        </a>
+      </footer>
     </main>
   )
 }

@@ -84,15 +84,35 @@ export default function AdminPage() {
     try {
       const fileExt = file.name.split('.').pop()
       const fileName = `${type}_${Date.now()}.${fileExt}`
-      const { error } = await supabase.storage.from('product-images').upload(fileName, file)
-      if (error) throw error
-      const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(fileName)
+      
+      // 嘗試上傳
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
+      
+      if (uploadError) {
+        console.error('Upload error:', uploadError)
+        setMessage({ text: `圖片上傳失敗: ${uploadError.message}`, type: 'error' })
+        setUploading(false)
+        return null
+      }
+      
+      // 取得公開 URL
+      const { data: urlData } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(fileName)
+      
+      console.log('Upload success, URL:', urlData.publicUrl)
       setUploading(false)
+      setMessage({ text: '✅ 圖片上傳成功', type: 'success' })
       return urlData.publicUrl
     } catch (err) {
       console.error('Upload error:', err)
       setUploading(false)
-      setMessage({ text: '圖片上傳失敗', type: 'error' })
+      setMessage({ text: `圖片上傳失敗: ${err.message}`, type: 'error' })
       return null
     }
   }
@@ -221,7 +241,7 @@ export default function AdminPage() {
     loadNotifications()
   }
 
-  if (loading) return <main className="min-h-screen flex items-center justify-center"><div className="text-2xl text-orange-600">載入中...</div></main>
+  if (loading) return <main className="min-h-screen flex items-center justify-center"><div className="text-2xl text-green-600">載入中...</div></main>
 
   if (!isAuthorized) {
     return (
@@ -229,7 +249,7 @@ export default function AdminPage() {
         <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
           <h1 className="text-2xl font-bold text-gray-800 mb-4">🔐 管理後台</h1>
           <p className="text-gray-600 mb-6">請先從首頁使用 Discord 登入</p>
-          <a href="/" className="inline-block bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-lg">返回首頁登入</a>
+          <a href="/" className="inline-block bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg">返回首頁登入</a>
         </div>
       </main>
     )
@@ -239,7 +259,7 @@ export default function AdminPage() {
     <main className="min-h-screen p-4 md:p-8 bg-gray-100">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-orange-600">🔧 管理後台</h1>
+          <h1 className="text-3xl font-bold text-green-600">🔧 管理後台</h1>
           <a href="/" className="text-gray-500 hover:text-gray-700">← 返回商城</a>
         </div>
 
@@ -251,11 +271,11 @@ export default function AdminPage() {
         )}
 
         <div className="flex bg-white rounded-xl shadow p-1 mb-6 flex-wrap">
-          <button onClick={() => setActiveTab('rewards')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition min-w-[100px] ${activeTab === 'rewards' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-100'}`}>🎁 兌換獎品</button>
-          <button onClick={() => setActiveTab('prizes')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition min-w-[100px] ${activeTab === 'prizes' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-100'}`}>🎰 福引獎品</button>
-          <button onClick={() => setActiveTab('codes')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition min-w-[100px] ${activeTab === 'codes' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-100'}`}>🎫 兌換碼</button>
-          <button onClick={() => setActiveTab('orders')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition min-w-[100px] ${activeTab === 'orders' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-100'}`}>📦 郵寄訂單</button>
-          <button onClick={() => setActiveTab('notifications')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition min-w-[100px] ${activeTab === 'notifications' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-orange-100'}`}>🔔 中獎通知</button>
+          <button onClick={() => setActiveTab('rewards')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition min-w-[100px] ${activeTab === 'rewards' ? 'bg-green-500 text-white' : 'text-gray-600 hover:bg-green-100'}`}>🎁 兌換獎品</button>
+          <button onClick={() => setActiveTab('prizes')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition min-w-[100px] ${activeTab === 'prizes' ? 'bg-green-500 text-white' : 'text-gray-600 hover:bg-green-100'}`}>🎰 福引獎品</button>
+          <button onClick={() => setActiveTab('codes')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition min-w-[100px] ${activeTab === 'codes' ? 'bg-green-500 text-white' : 'text-gray-600 hover:bg-green-100'}`}>🎫 兌換碼</button>
+          <button onClick={() => setActiveTab('orders')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition min-w-[100px] ${activeTab === 'orders' ? 'bg-green-500 text-white' : 'text-gray-600 hover:bg-green-100'}`}>📦 郵寄訂單</button>
+          <button onClick={() => setActiveTab('notifications')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition min-w-[100px] ${activeTab === 'notifications' ? 'bg-green-500 text-white' : 'text-gray-600 hover:bg-green-100'}`}>🔔 中獎通知</button>
         </div>
 
         {/* 兌換獎品管理 */}
@@ -270,9 +290,15 @@ export default function AdminPage() {
                   <div><label className="block text-sm font-medium text-gray-700 mb-1">數量 *</label><input type="number" value={rewardForm.quantity} onChange={(e) => setRewardForm({...rewardForm, quantity: e.target.value})} className="w-full px-3 py-2 border rounded-lg"/></div>
                 </div>
                 <div><label className="block text-sm font-medium text-gray-700 mb-1">說明</label><textarea value={rewardForm.description} onChange={(e) => setRewardForm({...rewardForm, description: e.target.value})} className="w-full px-3 py-2 border rounded-lg" rows={2}/></div>
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">圖片</label><input type="file" accept="image/*" onChange={async (e) => { const url = await handleImageUpload(e.target.files[0], 'reward'); if (url) setRewardForm({...rewardForm, image_url: url}) }} className="w-full px-3 py-2 border rounded-lg"/>{uploading && <p className="text-sm text-gray-500">上傳中...</p>}{rewardForm.image_url && <img src={rewardForm.image_url} alt="preview" className="mt-2 h-20 object-cover rounded"/>}</div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">圖片</label>
+                  <input type="file" accept="image/*" onChange={async (e) => { const url = await handleImageUpload(e.target.files[0], 'reward'); if (url) setRewardForm({...rewardForm, image_url: url}) }} className="w-full px-3 py-2 border rounded-lg mb-2"/>
+                  <input type="text" value={rewardForm.image_url || ''} onChange={(e) => setRewardForm({...rewardForm, image_url: e.target.value})} placeholder="或直接貼上圖片網址" className="w-full px-3 py-2 border rounded-lg text-sm"/>
+                  {uploading && <p className="text-sm text-blue-500 mt-1">上傳中...</p>}
+                  {rewardForm.image_url && <img src={rewardForm.image_url} alt="preview" className="mt-2 h-20 object-cover rounded"/>}
+                </div>
                 <div className="flex gap-2">
-                  <button onClick={handleSaveReward} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 rounded-lg">{editingReward ? '更新' : '新增'}</button>
+                  <button onClick={handleSaveReward} className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-lg">{editingReward ? '更新' : '新增'}</button>
                   {editingReward && <button onClick={() => { setEditingReward(null); setRewardForm({ name: '', cost: '', quantity: '', description: '', image_url: '' }) }} className="px-4 bg-gray-300 hover:bg-gray-400 text-gray-700 font-bold py-2 rounded-lg">取消</button>}
                 </div>
               </div>
@@ -305,9 +331,15 @@ export default function AdminPage() {
                   <div><label className="block text-sm font-medium text-gray-700 mb-1">機率</label><input type="number" step="0.001" value={prizeForm.probability} onChange={(e) => setPrizeForm({...prizeForm, probability: e.target.value})} className="w-full px-3 py-2 border rounded-lg"/></div>
                 </div>
                 <div><label className="block text-sm font-medium text-gray-700 mb-1">說明</label><textarea value={prizeForm.description} onChange={(e) => setPrizeForm({...prizeForm, description: e.target.value})} className="w-full px-3 py-2 border rounded-lg" rows={2}/></div>
-                <div><label className="block text-sm font-medium text-gray-700 mb-1">圖片</label><input type="file" accept="image/*" onChange={async (e) => { const url = await handleImageUpload(e.target.files[0], 'prize'); if (url) setPrizeForm({...prizeForm, image_url: url}) }} className="w-full px-3 py-2 border rounded-lg"/>{uploading && <p className="text-sm text-gray-500">上傳中...</p>}{prizeForm.image_url && <img src={prizeForm.image_url} alt="preview" className="mt-2 h-20 object-cover rounded"/>}</div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">圖片</label>
+                  <input type="file" accept="image/*" onChange={async (e) => { const url = await handleImageUpload(e.target.files[0], 'prize'); if (url) setPrizeForm({...prizeForm, image_url: url}) }} className="w-full px-3 py-2 border rounded-lg mb-2"/>
+                  <input type="text" value={prizeForm.image_url || ''} onChange={(e) => setPrizeForm({...prizeForm, image_url: e.target.value})} placeholder="或直接貼上圖片網址" className="w-full px-3 py-2 border rounded-lg text-sm"/>
+                  {uploading && <p className="text-sm text-blue-500 mt-1">上傳中...</p>}
+                  {prizeForm.image_url && <img src={prizeForm.image_url} alt="preview" className="mt-2 h-20 object-cover rounded"/>}
+                </div>
                 <div className="flex gap-2">
-                  <button onClick={handleSavePrize} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 rounded-lg">{editingPrize ? '更新' : '新增'}</button>
+                  <button onClick={handleSavePrize} className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-lg">{editingPrize ? '更新' : '新增'}</button>
                   {editingPrize && <button onClick={() => { setEditingPrize(null); setPrizeForm({ name: '', quantity: '', probability: '0.01', description: '', image_url: '' }) }} className="px-4 bg-gray-300 hover:bg-gray-400 text-gray-700 font-bold py-2 rounded-lg">取消</button>}
                 </div>
               </div>
@@ -345,7 +377,7 @@ export default function AdminPage() {
                   <div><label className="block text-sm font-medium text-gray-700 mb-1">結束時間</label><input type="datetime-local" value={codeForm.end_time} onChange={(e) => setCodeForm({...codeForm, end_time: e.target.value})} className="w-full px-3 py-2 border rounded-lg"/></div>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={handleSaveCode} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 rounded-lg">{editingCode ? '更新' : '新增'}</button>
+                  <button onClick={handleSaveCode} className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-lg">{editingCode ? '更新' : '新增'}</button>
                   {editingCode && <button onClick={() => { setEditingCode(null); setCodeForm({ code: '', points: '', max_uses: '1', description: '', start_time: '', end_time: '' }) }} className="px-4 bg-gray-300 hover:bg-gray-400 text-gray-700 font-bold py-2 rounded-lg">取消</button>}
                 </div>
               </div>
@@ -406,7 +438,7 @@ export default function AdminPage() {
           <div className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold">🔔 最近中獎通知 ({notifications.length})</h2>
-              <button onClick={loadNotifications} className="text-sm text-orange-500 hover:text-orange-700">🔄 重新整理</button>
+              <button onClick={loadNotifications} className="text-sm text-green-500 hover:text-green-700">🔄 重新整理</button>
             </div>
             {notifications.length === 0 ? <p className="text-gray-500 text-center py-8">目前沒有中獎通知</p> : (
               <div className="overflow-x-auto">
@@ -488,7 +520,7 @@ export default function AdminPage() {
                 <p className="text-sm text-gray-600">已處理</p>
               </div>
               <div className="bg-orange-50 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-orange-600">{notifications.filter(n => n.item_type === 'reward').length}</p>
+                <p className="text-2xl font-bold text-green-600">{notifications.filter(n => n.item_type === 'reward').length}</p>
                 <p className="text-sm text-gray-600">兌換獎品</p>
               </div>
               <div className="bg-purple-50 rounded-lg p-4 text-center">
